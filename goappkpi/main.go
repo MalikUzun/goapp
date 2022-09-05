@@ -7,6 +7,8 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 type Todo struct {
@@ -18,9 +20,18 @@ type Todos []Todo
 
 var todoList Todos
 
+db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+	if err != nil {
+		panic("failed to connect database")
+	}
+
+	db.AutoMigrate(&Todo{})
+
 func main() {
 
 	router := mux.NewRouter()
+
+	
 
 	router.HandleFunc("/getTodos", getTodos).Methods("GET")
 	router.HandleFunc("/postTodos", postTodos).Methods("POST")
@@ -34,6 +45,7 @@ func main() {
 func getTodos(w http.ResponseWriter, r *http.Request) {
 	todos := todoList
 
+	db.First(&todo, 1)
 	respondWithJSON(w, http.StatusOK, todos)
 }
 
@@ -43,6 +55,8 @@ func postTodos(w http.ResponseWriter, r *http.Request) {
 	if err := decoder.Decode(&todo); err != nil {
 		respondWithError(w, http.StatusOK, "yok")
 	}
+
+	db.Create(&todo)
 
 	respondWithJSON(w, http.StatusOK, todo)
 	todoList = append(todoList, todo)
@@ -55,6 +69,7 @@ func updateTodo(w http.ResponseWriter, r *http.Request) {
 
 	s, err := strconv.ParseUint(vars["id"], 10, 32)
 
+	db.Model(&todo).Update(todo)
 	todoList[s] = todo
 	fmt.Println(err)
 
@@ -72,6 +87,7 @@ func removeTodo(w http.ResponseWriter, r *http.Request) {
 
 	todoList = append(todoList[:s], todoList[s+1:]...)
 
+	db.Delete(&todo, s)
 	respondWithJSON(w, http.StatusOK, todoList)
 }
 
